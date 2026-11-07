@@ -1,0 +1,37 @@
+# ============================================================
+# TIKUM INSOM — URL Rewriter
+# Menghilangkan ekstensi .html dari URL (Apache + mod_rewrite)
+# Contoh: /home.html  ->  /home
+# ============================================================
+
+Options -MultiViews
+RewriteEngine On
+
+# Step 1: Jika user akses /home.html, redirect 301 ke /home
+RewriteCond %{THE_REQUEST} \s/+(.+?)\.html[\s?] [NC]
+RewriteRule ^ /%1 [R=301,L,NE]
+
+# Step 2: Jika file /home tidak ada tapi home.html ada, serve home.html
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME}\.html -f
+RewriteRule ^(.+?)/?$ $1.html [L]
+
+# Optional HTTPS redirect (aktifkan kalau sudah pakai SSL)
+# RewriteCond %{HTTPS} off
+# RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Caching statis (biar makin kenceng)
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css "access plus 7 days"
+  ExpiresByType application/javascript "access plus 7 days"
+  ExpiresByType image/svg+xml "access plus 30 days"
+  ExpiresByType image/png "access plus 30 days"
+  ExpiresByType image/webp "access plus 30 days"
+</IfModule>
+
+# Kompresi
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript image/svg+xml
+</IfModule>
