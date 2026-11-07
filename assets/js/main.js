@@ -1,7 +1,7 @@
 /* ============================================================
    TIKUM INSOM — Main JS
    Author: InsomniaDev
-   Folder-based routing: /home/, /tools/, /about/, /info/
+   Folder-based routing + page transition + logo support.
    ============================================================ */
 
 (function () {
@@ -10,7 +10,7 @@
   var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* -----------------------------------------------------------
-     1. ENTRANCE ANIMATIONS — pakai IntersectionObserver
+     1. ENTRANCE ANIMATIONS
      ----------------------------------------------------------- */
   function initEntranceAnimations() {
     var targets = document.querySelectorAll('[data-anim]');
@@ -37,14 +37,13 @@
   }
 
   /* -----------------------------------------------------------
-     2. ACTIVE NAV STATE — support folder DAN file .html
-        /home/  /home/index.html  /home.html  /home  → "home"
+     2. ACTIVE NAV STATE — support folder dan .html
      ----------------------------------------------------------- */
   function initActiveNav() {
     var path = window.location.pathname
-      .replace(/\/index\.html$/, '/')   // /home/index.html → /home/
-      .replace(/\.html$/, '')           // /home.html       → /home
-      .replace(/\/+$/, '');             // /home/           → /home
+      .replace(/\/index\.html$/, '/')
+      .replace(/\.html$/, '')
+      .replace(/\/+$/, '');
 
     var segment = path.split('/').pop() || 'home';
 
@@ -54,7 +53,6 @@
     ].join(',');
 
     document.querySelectorAll(selector).forEach(function (el) {
-      // Ambil nama halaman dari href, buang ../ dan trailing slash
       var href = (el.getAttribute('href') || '')
         .replace(/\.\.\//g, '')
         .replace(/\.html$/, '')
@@ -71,7 +69,52 @@
   }
 
   /* -----------------------------------------------------------
-     3. SMOOTH ANCHOR SCROLL
+     3. PAGE TRANSITION — fade out saat klik link internal,
+        fade in otomatis via CSS animation saat halaman baru load
+     ----------------------------------------------------------- */
+  function initPageTransition() {
+    document.addEventListener('click', function (e) {
+      if (e.defaultPrevented) return;
+      if (e.button !== 0) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+      var link = e.target.closest('a[href]');
+      if (!link) return;
+      if (link.target && link.target !== '_self') return;
+      if (link.hasAttribute('download')) return;
+
+      var href = link.getAttribute('href');
+      if (!href) return;
+      if (
+        href.charAt(0) === '#' ||
+        href.indexOf('http') === 0 ||
+        href.indexOf('mailto:') === 0 ||
+        href.indexOf('tel:') === 0 ||
+        href.indexOf('javascript:') === 0
+      ) return;
+
+      e.preventDefault();
+
+      if (reducedMotion) {
+        window.location.href = href;
+        return;
+      }
+
+      document.documentElement.classList.add('leaving');
+
+      setTimeout(function () {
+        window.location.href = href;
+      }, 180);
+    });
+
+    // Kalau user balik lewat tombol Back (bfcache), bersihkan state
+    window.addEventListener('pageshow', function () {
+      document.documentElement.classList.remove('leaving');
+    });
+  }
+
+  /* -----------------------------------------------------------
+     4. SMOOTH ANCHOR SCROLL
      ----------------------------------------------------------- */
   function initSmoothScroll() {
     if (reducedMotion) return;
@@ -88,7 +131,7 @@
   }
 
   /* -----------------------------------------------------------
-     4. BUTTON TAP FEEDBACK
+     5. BUTTON TAP FEEDBACK
      ----------------------------------------------------------- */
   function initButtonFeedback() {
     if (reducedMotion) return;
@@ -108,7 +151,7 @@
   }
 
   /* -----------------------------------------------------------
-     5. HEADER SCROLL SHADOW
+     6. HEADER SCROLL SHADOW
      ----------------------------------------------------------- */
   function initHeaderScroll() {
     var header = document.querySelector('.site-header');
@@ -126,7 +169,7 @@
   }
 
   /* -----------------------------------------------------------
-     6. PARALLAX HERO (desktop only)
+     7. PARALLAX HERO (desktop only)
      ----------------------------------------------------------- */
   function initHeroParallax() {
     if (reducedMotion) return;
@@ -144,18 +187,16 @@
   }
 
   /* -----------------------------------------------------------
-     7. PREFETCH — dukung folder path (../tools/, ../about/, dll)
+     8. PREFETCH — biar pindah halaman makin instan
      ----------------------------------------------------------- */
   function initPrefetch() {
     var prefetched = new Set();
-
     document.querySelectorAll('a[href]').forEach(function (link) {
       var href = link.getAttribute('href');
       if (!href) return;
-      if (href.startsWith('#') || href.startsWith('http')) return;
-      if (href.startsWith('mailto:') || href.startsWith('tel:')) return;
-      // Folder-based: ../tools/  atau  tools/
-      if (!href.endsWith('/') && !href.endsWith('.html')) return;
+      if (href.charAt(0) === '#' || href.indexOf('http') === 0) return;
+      if (href.indexOf('mailto:') === 0 || href.indexOf('tel:') === 0) return;
+      if (href.charAt(href.length - 1) !== '/' && href.indexOf('.html') === -1) return;
 
       var trigger = function () {
         if (prefetched.has(href)) return;
@@ -172,11 +213,12 @@
   }
 
   /* -----------------------------------------------------------
-     8. INIT
+     9. INIT
      ----------------------------------------------------------- */
   function boot() {
     initActiveNav();
     initEntranceAnimations();
+    initPageTransition();
     initSmoothScroll();
     initButtonFeedback();
     initHeaderScroll();
